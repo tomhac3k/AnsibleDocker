@@ -1,0 +1,51 @@
+---
+- name: Running a Container
+  hosts: servera.example.com
+  become: yes
+  vars_prompt:
+    - name: docker_username
+      prompt: Enter your Docker username on "https://hub.docker.com/"
+      private: no
+    - name: docker_password
+      prompt: Enter your Docker password
+  vars:
+    container_name: web
+    container_image: httpd
+    container_port: 80
+    container_expose_port: 8080
+    container_action: run
+  pre_tasks:
+    - name: Check for logged in status
+      shell: 'docker info | grep name'
+      register: login_status
+      ignore_errors: yes
+  tasks:
+    - name: Loging to your docker account
+      community.docker.docker_login:
+        username: "{{ docker_username }}"
+        password: "{{ docker_password }}"
+        #reauthorize: yes
+      when: login_status.rc == 0
+
+    - name: Create and run a Docker Container
+      community.docker.docker_container:
+        name: "{{ container_name }}"
+        image: "{{ container_image }}"
+        state: started
+        ports: "{{ container_expose_port }}:{{ container_port }}"
+      when: container_action == 'run'
+
+- name: Test container_image container
+  hosts: servera.example.com
+  become: no
+  vars:
+    container_expose_port: 8080
+    container_action: 'run'
+  tasks:
+    - name: Verify application health
+      ansible.builtin.uri:
+        url: http://{{ inventory_hostname }}:{{ container_expose_port }}
+        status_code: 200
+      delegate_to: localhost
+      when: container_action == 'run'
+
