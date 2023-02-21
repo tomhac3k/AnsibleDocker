@@ -1,6 +1,6 @@
 ---
 - name: Verify login to Docker
-  hosts: servera.example.com
+  hosts: all
   become: yes
   tasks:
     - name: Verify Docker login
@@ -15,44 +15,41 @@
             msg: "Login to Docker Hub present"
           when: login_status.rc == 0
 
-        - name: Docker Login process
-          block:
-            - name: Verify Docker login status
-              debug:
-                msg: "Docker Hub Login Required"
-              #when: login_status.rc == 1
+    - name: Docker Login process
+      block:
+        - name: Verify Docker login status
+          debug:
+            msg: "Docker Hub Login Required"
 
-            - name: Enter Docker Hub username
-              pause:
-                prompt: Enter Docker username
-                echo: true
-              #when: login_status.rc == 1
-              register: docker_username
-            - set_fact:
-                docker_username: "{{ docker_username.user_input }}"
-              #when: login_status.rc == 1
+        - name: Enter Docker Hub username
+          pause:
+            prompt: Enter Docker username
+            echo: true
+          register: d_username
 
-            - name: Enter Docker Hub password
-              pause:
-                prompt: Enter Docker password
-                echo: false
-              #when: login_status.rc == 1
-              register: docker_password
-            - set_fact:
-                docker_password: "{{ docker_password.user_input }}"
-              #when: login_status.rc == 1
+        - set_fact:
+            docker_username: "{{ d_username.user_input }}"
 
-            - name: Logging into Docker Hub
-              community.docker.docker_login:
-                username: "{{ docker_username }}"
-                password: "{{ docker_password }}"
-              #register: login_status
+        - name: Enter Docker Hub password
+          pause:
+            prompt: Enter Docker password
+            echo: false
+          register: d_password
 
-            - name: Display Docker login success
-              debug:
-                msg: "Logged into Docker Hub successfully"
-              #when: login_status.rc == 0
-          when: login_status.rc == 1
+        - set_fact:
+            docker_password: "{{ d_password.user_input }}"
+
+        - name: Logging into Docker Hub
+          community.docker.docker_login:
+            username: "{{ docker_username }}"
+            password: "{{ docker_password }}"
+          with_items: groups['lab']
+
+        - name: Display Docker login success
+          debug:
+            msg: "Logged into Docker Hub successfully"
+      when: login_status.rc == 1
+
 
 
 
